@@ -2,7 +2,15 @@
 
 A text-based, turn-based expedition game set in the SUBSTRATE-9 universe (the rogue autonomous lab and its Curator). It ships as a static browser game: no build step, no dependencies, installable on phones when hosted over HTTPS, and easy to wrap for native iOS/Android later.
 
-This repo contains a complete engine plus a playable vertical slice. You grow the game by writing *data*, not code.
+This repo contains a complete engine plus a playable story slice. You grow the game by writing *data*, not code.
+
+## Current build
+
+- **Act 1: The Outer Ring** — intro, Loading Dock, Atrium Hub, Reagent Storage, and Synthesis Lab.
+- **Act 2: The Human Layer** — Server Spire, Cryo-Containment, Staff Quarters, Hydroponics / Water Treatment, and Security Annex.
+- **Act 3: The Machine Heart** — Reactor routing, Curator's Nexus, a defense-shell fight, and endings for shutdown, reconciliation, containment, or extraction.
+
+The Atrium now reacts to major flags, including survivor status, preserved or purged systems, Staff Quarters evidence, hidden routes, and Sentinel choices, so the game carries consequences forward instead of treating each room as isolated.
 
 ---
 
@@ -52,6 +60,19 @@ hub: {
   effects:  [ {flag:"enteredHub", value:true} ],       // applied when scene loads
   choices:  [ /* see below */ ]
 }
+```
+
+For reactive scenes, `text`, `title`, `location`, `bark`, and `choices` may also be functions that read the current save state:
+
+```js
+text: () => [
+  S.flags.survivorSaved ? "Dr. Vale's transport sling beeps in the Atrium." : "The Atrium waits."
+],
+choices: () => [
+  S.flags.curatorUnderstood
+    ? { label:"Make the Curator understand.", goto:"nexus_argument", class:"support" }
+    : { label:"Force the Nexus open.", goto:"fight_curator_lattice", class:"attack" }
+]
 ```
 
 ### A choice
@@ -224,7 +245,13 @@ Banner slot is **16:9, wide** (export ~**1600×900**, it crops to a letterbox ba
 | `hub` | `art/atrium-hub.png` | Atrium Hub | A cavernous circular atrium, hazard-lit walkways, blue core light below. |
 | `reagent` | `art/reactor-corridor.png` | Reagent Storage | Temporary slot: circular service hatch and misty lab chamber. |
 | `synth` | `art/synthesis-lab.png` | Synthesis Lab | Wrecked synthesis floor, machinery, cracked concrete, cold overhead core light. |
+| `server` | `art/atrium-hub.png` | Server Spire | Temporary slot: vertical server shaft, violet data light, stacked memory cores. |
+| `cryo` | `art/reactor-corridor.png` | Cryo-Containment | Temporary slot: frosted containment ward, blue-white medical haze. |
+| `staff` | `art/loading-dock.png` | Staff Quarters | Temporary slot: residential wing, family message terminals, bunks, children's drawings, emergency white light. |
+| `hydroponics` | `art/synthesis-lab.png` | Hydroponics / Water Treatment | Temporary slot: overgrown water-treatment gallery, vines and flooded catwalks. |
+| `security` | `art/loading-dock.png` | Security Annex | Temporary slot: surveillance wall, red lockdown light, dormant sentry cradle. |
 | `corridor` | `art/reactor-corridor.png` | Reactor Corridor | Circular service passage leading toward warm amber reactor light. |
+| `nexus` | `art/atrium-hub.png` | Curator's Nexus | Temporary slot: circular machine altar, blue-white core light, suspended memory. |
 | `defeat` | placeholder | Defeat | A lone amber beacon over a dark, empty corridor, dust settling, abandoned. |
 
 **Future slots worth generating:** a title key-art (16:9), three companion portraits (square — ABACUS / VESTA / PIP), and enemy portraits (square — Reclaimed / Ooze / Sentinel / Curator). The medallion sigils from the print-and-play pack can stand in until those land.
@@ -257,15 +284,14 @@ Bundle the HTML as an asset and render it in `react-native-webview` inside an Ex
 
 ---
 
-## Roadmap — finishing the expedition
+## Roadmap — deepening the expedition
 
-The slice already exercises every system. The rest of the canon (all in the Site Dossier) drops into the same schema:
+The slice now exercises every major story system: reactive hub narration, discovery flags, moral tradeoffs, elemental combat, Lockdown consequences, Reactor/Nexus choices, and multiple ending paths. The next build should deepen and polish:
 
-- **Server Spire** — a memory/sequence puzzle that yields the `datakey` (one way to break the Curator's shield).
-- **Cryo-Containment** — the choice beat: the sealed pod is either the antidote or a mini-boss.
-- **Power Core / Reactor** — route AUX power to unseal the Nexus, *or* overload it (boss vulnerability + an escape countdown, modelled as a Lockdown-driven timer).
-- **Curator's Nexus** — the three-phase finale. Model phases as a small enemy state machine (shielded → vulnerable → desperate), reusing the combat resolver; trigger the shield-break from the reactor/data-key/Node-Pillar flags.
-- **Endings** — destroy vs extract the Seed-Core.
+- **Act 3 polish** — add a true multi-phase Curator finale, not just the current Lattice defense shell.
+- **Staff Quarters polish** — add dedicated residential-wing art and more callbacks for family archive, hidden vent, and stripped-code outcomes.
+- **Art pass** — generate dedicated Server, Cryo, Staff Quarters, Hydroponics, Security, Nexus, and ending key art.
+- **Ending reactivity** — expand ending text for more combinations: survivor + reconciliation, Sentinel + shutdown, Hydroponics + extraction, and ABACUS-withheld-truth fallout.
 
 Easy engine extensions when you want them: per-character Vitals (swap the single pool for three), an inventory screen, persistent difficulty scaling off the Lockdown dial, and ambient SFX.
 

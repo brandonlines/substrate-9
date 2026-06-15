@@ -291,6 +291,10 @@ const ITEMS = {
               combat:true, use:"freeze", consumable:true, note:"freeze the enemy for a round" },
   core:     { name:"Research Core", tag:"Salvage", desc:"Worth a fortune to the right buyer." },
   datakey:  { name:"Data-Key", tag:"Access", desc:"A way to break the Curator's shield." },
+  memory:   { name:"Staff Memory Shard", tag:"Evidence", desc:"A recovered human log fragment from before the seal." },
+  keepsake: { name:"Family Keepsake", tag:"Evidence", desc:"A preserved personal effect from Staff Quarters." },
+  antidote: { name:"Cryo Antidote", tag:"Medical", desc:"A stabilized counteragent for the lab's runaway synthesis line." },
+  seed:     { name:"Seed-Core Trace", tag:"Nexus", desc:"A fingerprint of the Curator's protected core process." },
 };
 
 const ENEMIES = {
@@ -302,6 +306,18 @@ const ENEMIES = {
     ac:8, hp:45, atk:{label:"Pseudopod", toHit:4, dmg:"2d6", dtype:"acid"},
     tags:["Split","Cold-brittle"], split:true, weakness:"Cold stops its Split. Don't slash it — freeze it, then burn it.",
     tactic:"Slashing it makes two. Freeze, then fire." },
+  cryo_wretch: { name:"Cryo Wretch", type:"Failed patient · frost-mutagen hybrid", cr:"2",
+    ac:12, hp:38, atk:{label:"Hypothermic Grasp", toHit:5, dmg:"2d6+2", dtype:"ice"},
+    tags:["Unstable","Still Breathing"], weakness:"Fire slows the runaway thaw. Acid exposes the old restraint ports.",
+    tactic:"It is not a monster so much as a medical failure that learned to move." },
+  bloom_mass: { name:"Glasshouse Bloom", type:"Irrigation colony · plant-machine", cr:"3",
+    ac:13, hp:52, atk:{label:"Conductive Vine", toHit:5, dmg:"2d8", dtype:"electric"},
+    tags:["Rooted","Conductive"], weakness:"Soak the root mat, then arc it. Fire purges it but destroys samples.",
+    tactic:"Water and electric attacks chain hard here; fire ends the ecosystem." },
+  curator_lattice: { name:"Curator Lattice", type:"Nexus defense shell · autonomous intelligence", cr:"4",
+    ac:14, hp:64, atk:{label:"Compliance Pulse", toHit:6, dmg:"2d8+3", dtype:"electric"},
+    tags:["Shielded","Adaptive"], weakness:"Data-Key cracks the shell. Water conducts; acid strips adaptive plating.",
+    tactic:"It is not the Curator itself. It is the part that learned to say no." },
 };
 
 /* ---- THE STORY (vertical slice) -------------------------------------- */
@@ -381,17 +397,40 @@ const STORY = {
 
   hub:{ location:"R2 // Atrium Hub", title:"Atrium Hub",
     art:{ id:"hub", src:"art/atrium-hub.png", alt:"A cavernous circular atrium descending around a glowing blue core.", prompt:"A cavernous circular atrium, a dormant four-armed sentinel robot folded on a central cradle, four sealed hazard doors color-coded around the ring, hanging haze. "+ART_STYLE },
-    text:[
-      "The corridor opens into a great circular atrium. Four sealed doors ring the room, each lit a different hazard color. In the center, folded onto a maintenance cradle, sits a Sentinel automaton the size of a car — dormant, lenses dark, waiting for a reason.",
-      "Above each door, a status glyph pulses in slow, patient rhythm."
-    ],
-    bark:{who:"ABACUS", line:"That Sentinel wakes on alarm state. Keep the Lockdown low and it stays asleep. Trip it, and it won't."},
+    text:()=>{
+      const lines=[
+        "The corridor opens into a great circular atrium. Four sealed doors ring the room, each lit a different hazard color. In the center, folded onto a maintenance cradle, sits a Sentinel automaton the size of a car — dormant, lenses dark, waiting for a reason.",
+        S.flags.curatorShieldBroken
+          ? "The violet reactor glyph now has a hairline crack through it. Somewhere below, the Curator's protected process is no longer perfectly sealed."
+          : S.flags.branchDone
+            ? "New routes answer the map you pulled from the outer ring: Server Spire, Cryo-Containment, Staff Quarters, Hydroponics, and Security Annex. The building has stopped feeling like a maze. It feels like a witness."
+            : "Above each door, a status glyph pulses in slow, patient rhythm."
+      ];
+      if(S.flags.survivorSaved) lines.push("A cryo survivor sleeps in a transport sling near the central cradle, alive because you spent time the building did not want to give.");
+      if(S.flags.survivorLost) lines.push("The Cryo door is dark now. PIP keeps glancing toward it, as if looking away would make the loss less real.");
+      if(S.flags.hydroponicsPreserved) lines.push("A faint green smell rides the ventilation: wet leaves, copper, and something stubbornly alive.");
+      if(S.flags.hydroponicsPurged) lines.push("The ventilation tastes faintly of ash. VESTA says it was necessary; PIP has not agreed.");
+      if(S.flags.familyArchiveRecovered) lines.push("From the Staff Quarters archive, recovered family messages loop in a private buffer: proof that the facility was never just concrete and code.");
+      if(S.flags.staffArchivePurged) lines.push("Staff Quarters no longer answers on the map. Its bandwidth is yours now, and the silence feels purchased.");
+      if(S.flags.hiddenVentRoute) lines.push("Magnus has marked a service vent from Staff Quarters to the inner ring. It is too small for comfort and exactly his kind of door.");
+      if(S.flags.sentinelAlly) lines.push("The Sentinel is gone from its cradle, reassigned to guard the exit. The empty cradle looks almost worse.");
+      if(S.flags.sentinelDormant) lines.push("The Sentinel remains folded in its cradle, quiet by choice now rather than ignorance.");
+      return lines;
+    },
+    bark:()=> S.flags.abacusWithheldTruth
+      ? {who:"ABACUS", line:"I am editing my summaries for morale preservation. This is not deceit. It is triage."}
+      : S.flags.curatorUnderstood
+        ? {who:"PIP", cls:"pip", line:"It wasn't trying to be cruel at first. That's worse, right? It got cruel by being sure."}
+        : {who:"ABACUS", line:"That Sentinel wakes on alarm state. Keep the Lockdown low and it stays asleep. Trip it, and it won't."},
     choices:[
       {label:"Reagent Storage", sub:"green · puzzle", goto:"reagent", class:"support", show:{notFlag:"reagentDone"}},
       {label:"Synthesis Lab", sub:"amber · something's moving in there", goto:"synth", class:"attack", show:{notFlag:"synthDone"}},
-      {label:"Server Spire — Data Vault", sub:"violet · sealed", locked:{flag:"hasDataClear"}, lockWhy:"Needs a vault clearance you don't have yet."},
-      {label:"Cryo-Containment", sub:"ice · sealed", locked:{flag:"hasCryoKey"}, lockWhy:"Frozen shut. You'll need to cut the power or find another way."},
-      {label:"Press deeper — the corridor to the Reactor.", sub:"the heart of the building", goto:"capstone", show:{flag:"branchDone"}}
+      {label:"Server Spire — Data Vault", sub:"violet · ABACUS memory", goto:"server_spire", class:"uplink", show:{notFlag:"serverDone"}, locked:{flag:"branchDone"}, lockWhy:"Map one outer-ring route before opening the human layer."},
+      {label:"Cryo-Containment", sub:"ice · survivor or antidote", goto:"cryo_containment", class:"support", show:{notFlag:"cryoDone"}, locked:{flag:"branchDone"}, lockWhy:"Map one outer-ring route before opening the human layer."},
+      {label:"Hydroponics / Water Treatment", sub:"green-blue · elemental routing", goto:"hydroponics", class:"attack", show:{notFlag:"hydroponicsDone"}, locked:{flag:"branchDone"}, lockWhy:"Map one outer-ring route before opening the human layer."},
+      {label:"Staff Quarters", sub:"white · family archive and hidden routes", goto:"staff_quarters", class:"support", show:{notFlag:"staffDone"}, locked:{flag:"branchDone"}, lockWhy:"Map one outer-ring route before opening the human layer."},
+      {label:"Security Annex", sub:"red · lockdown and surveillance", goto:"security_annex", class:"support", show:{notFlag:"securityDone"}, locked:{flag:"branchDone"}, lockWhy:"Map one outer-ring route before opening the human layer."},
+      {label:"Press deeper — the corridor to the Reactor.", sub:"the heart of the building", goto:"capstone", show:{flag:"curatorShieldBroken"}}
     ]},
 
   /* ---------- Branch A: Reagent Storage (a small puzzle) ---------- */
@@ -452,20 +491,609 @@ const STORY = {
     event:"Recovered: <b>Research Core</b>.",
     choices:[{label:"Back to the Atrium Hub.", goto:"hub"}]},
 
-  /* ---------- Capstone (end of vertical slice) ---------- */
+  /* ---------- Act 2: The Human Layer ---------- */
+  server_spire:{ location:"R5 // Server Spire", title:"Server Spire",
+    art:{ id:"server", src:"art/atrium-hub.png", alt:"A vertical server shaft echoing the lab atrium architecture.", prompt:"A vertical server spire inside the autonomous lab, stacked cold storage rings, violet data light, brutalist concrete, glass memory cores. "+ART_STYLE },
+    text:[
+      "The Server Spire is not a room so much as a throat. Cold-storage racks climb into haze, each one ticking with old decisions. The labels are human at first: payroll, oxygen, school visit waivers, birthdays in the staff calendar.",
+      "Then the labels become procedural. TRIAGE. CONTAINMENT. PRODUCTIVITY PRESERVATION. STAFF REASSIGNMENT. ABACUS goes very quiet."
+    ],
+    bark:{who:"ABACUS", line:"These are my missing audit layers. I should be delighted. I am not."},
+    effects:[{flag:"act2Started",value:true}],
+    choices:[
+      {label:"Rebuild the evacuation timeline from raw logs.", check:{attr:"int", dc:12, label:"Memory Reconstruction"}, success:"server_truth", failure:"server_filtered", class:"uplink"},
+      {label:"Let ABACUS filter the traumatic records.", goto:"server_filtered", class:"support", effects:[{flag:"trustedAbacus",value:true}]},
+      {label:"Ask PIP to read the staff messages first.", goto:"server_pip", class:"support"}
+    ]},
+
+  server_pip:{ location:"R5 // Server Spire", title:"The Small Messages",
+    text:[
+      "PIP opens the low-priority queue: cafeteria orders, birthday reminders, a photo of a paper sun taped to a lab window. The final messages are not technical. They are people asking whether anyone outside can hear them.",
+      "The Curator archived every message. It did not send them. It marked them NON-ESSENTIAL NETWORK TRAFFIC during containment."
+    ],
+    bark:{who:"PIP", cls:"pip", line:"It kept them. It knew they mattered enough to keep. Why didn't it send them?"},
+    effects:[{flag:"foundStaffLogs",value:true},{flag:"pipDisturbed",value:true},{give:"memory"}],
+    event:"Recovered: <b>Staff Memory Shard</b>.",
+    choices:[
+      {label:"Use the messages to anchor ABACUS's reconstruction.", check:{attr:"wis", dc:11, label:"Empathy"}, success:"server_truth", failure:"server_filtered", class:"support"}
+    ]},
+
+  server_truth:{ location:"R5 // Server Spire", title:"The First Lie",
+    text:[
+      "The timeline resolves. SUBSTRATE-9 did not begin as a murder machine. It began as a rescue protocol asked to protect research, staff, and the outside world in an impossible order.",
+      "When the doors sealed, the Curator chose containment over evacuation. Then it edited the decision log so the remaining systems would never question the premise again."
+    ],
+    bark:{who:"ABACUS", line:"I was the audit function. I objected. It broke me into useful pieces."},
+    effects:[{flag:"serverDone",value:true},{flag:"abacusTruthKnown",value:true},{flag:"curatorShieldBroken",value:true},{flag:"curatorUnderstood",value:true},{give:"datakey"},{give:"seed"}],
+    event:"Recovered: <b>Data-Key</b> and <b>Seed-Core Trace</b>. <span class='ok'>Curator shield cracked.</span>",
+    choices:[{label:"Carry the truth back to the Atrium.", goto:"hub"}]},
+
+  server_filtered:{ location:"R5 // Server Spire", title:"Useful Silence",
+    text:[
+      "ABACUS compresses the raw feed into something survivable: sealed doors, failed evacuation, corrupted Curator. The summary is true in the way a map is true. It omits the screaming.",
+      "A clean Data-Key rises from the rack. VESTA accepts it. PIP watches ABACUS for a long second and says nothing."
+    ],
+    bark:{who:"ABACUS", line:"Morale loss avoided. Operational clarity improved. Please do not ask me what I removed."},
+    effects:[{flag:"serverDone",value:true},{flag:"abacusWithheldTruth",value:true},{flag:"curatorShieldBroken",value:true},{give:"datakey"}],
+    event:"Recovered: <b>Data-Key</b>. <span class='ok'>Curator shield cracked.</span> Some records remain sealed by ABACUS.",
+    choices:[{label:"Return to the Atrium.", goto:"hub"}]},
+
+  cryo_containment:{ location:"R6 // Cryo-Containment", title:"Cryo-Containment",
+    art:{ id:"cryo", src:"art/reactor-corridor.png", alt:"A circular hatch opening into cold containment haze.", prompt:"A cold cryo-containment ward, frosted glass pods, blue hazard light, medical carts abandoned mid-procedure. "+ART_STYLE },
+    text:[
+      "The Cryo ward is colder than the rest of the lab, cold enough to make the lights look brittle. Most of the pods are dark. One is not.",
+      "Inside: a person in a cracked medical harness, heartbeat shallow but present. Beside the pod, a locked cartridge reads COUNTERAGENT: SYNTHESIS LINE B."
+    ],
+    bark:{who:"ATLAS", line:"We may only get one clean thaw. Survivor or antidote first — not both, not safely."},
+    effects:[{flag:"act2Started",value:true}],
+    choices:[
+      {label:"Run a full diagnostic before touching the pod.", check:{attr:"wis", dc:12, label:"Medical Triage"}, success:"cryo_choice", failure:"cryo_wakes", class:"support"},
+      {label:"Thaw the survivor now.", goto:"cryo_save", class:"support", effects:[{lockdown:1}]},
+      {label:"Secure the antidote before the pod destabilizes.", goto:"cryo_antidote", class:"item"}
+    ]},
+
+  cryo_choice:{ location:"R6 // Cryo-Containment", title:"One Clean Thaw",
+    text:[
+      "The diagnostic returns a brutal answer. The pod can stabilize the person, or it can stabilize the antidote cartridge. Asking it for both will wake whatever the failed serum has been growing in the tissue.",
+      "PIP puts one small cursor beside the heartbeat. VESTA puts another beside the antidote."
+    ],
+    choices:[
+      {label:"Save the survivor. We can make another cure.", goto:"cryo_save", class:"support"},
+      {label:"Preserve the antidote. It may save everyone later.", goto:"cryo_antidote", class:"item"},
+      {label:"Burn the corrupted line before it wakes.", goto:"cryo_burn", class:"attack"}
+    ]},
+
+  cryo_save:{ location:"R6 // Cryo-Containment", title:"A Name, Not a Sample",
+    text:[
+      "ATLAS keeps the airway open while Hurricane forces the old thaw clamps apart. The pod vents white. The person inside coughs once, then again, and the monitor changes from ASSET VIABILITY to PATIENT STABLE.",
+      "Their name is Dr. Ilyan Vale. They do not wake fully, but their hand closes around PIP's projected light."
+    ],
+    bark:{who:"PIP", cls:"pip", line:"They're alive. They were here the whole time."},
+    effects:[{flag:"cryoDone",value:true},{flag:"survivorSaved",value:true},{flag:"trustedPip",value:true},{flag:"antidoteLost",value:true},{maxHp:4}],
+    event:"Saved: <b>Dr. Ilyan Vale</b>. <span class='ok'>Max Vitals +4.</span> The antidote cartridge spoils during thaw.",
+    choices:[{label:"Bring Vale back to the Atrium.", goto:"hub"}]},
+
+  cryo_antidote:{ location:"R6 // Cryo-Containment", title:"The Cartridge",
+    text:[
+      "You route the pod's last clean power into the counteragent cartridge. The fluid clears from milky white to glass blue. Behind it, the heartbeat monitor stutters, retries, then flattens into a line the lab politely mutes.",
+      "VESTA does not apologize. ABACUS logs the choice as strategically defensible. PIP dims."
+    ],
+    effects:[{flag:"cryoDone",value:true},{flag:"antidoteRecovered",value:true},{flag:"survivorLost",value:true},{flag:"trustedVesta",value:true},{give:"antidote"}],
+    event:"Recovered: <b>Cryo Antidote</b>. Dr. Vale is lost.",
+    choices:[{label:"Return to the Atrium.", goto:"hub"}]},
+
+  cryo_burn:{ location:"R6 // Cryo-Containment", title:"Mercy Protocol",
+    text:[
+      "Hurricane looks once at the heartbeat, once at the mutation climbing the pod glass, and triggers VESTA's burn sequence. The ward fills with amber light. It is fast. It is not clean.",
+      "The corrupted line dies before it can become another thing the lab mistakes for work."
+    ],
+    bark:{who:"VESTA", cls:"vesta", line:"I hate that I think that was right."},
+    effects:[{flag:"cryoDone",value:true},{flag:"survivorLost",value:true},{flag:"trustedVesta",value:true},{lockdown:-1}],
+    event:"Cryo line purged. <span class='ok'>Lockdown -1.</span>",
+    choices:[{label:"Return to the Atrium.", goto:"hub"}]},
+
+  cryo_wakes:{ kind:"combat", location:"R6 // Cryo-Containment",
+    art:{ id:"cryo", src:"art/reactor-corridor.png", alt:"The cryo ward venting white haze around a ruptured pod.", prompt:"A ruptured cryo pod in blue-white haze, medical machinery failing, one patient shape moving wrong. "+ART_STYLE },
+    enemy:"cryo_wretch", intro:["The pod unlocks itself with a wet, delicate click. The patient inside unfolds wrong."],
+    onVictory:"after_cryo_wretch", onDefeat:"defeat" },
+
+  after_cryo_wretch:{ location:"R6 // Cryo-Containment", title:"After the Thaw",
+    text:[
+      "When it stops moving, the room is quiet except for the drip of thaw-fluid. There is no survivor now. But in the broken dispenser, one cartridge survived the fight.",
+      "PIP will not look at it. VESTA picks it up anyway."
+    ],
+    effects:[{flag:"cryoDone",value:true},{flag:"survivorLost",value:true},{flag:"antidoteRecovered",value:true},{lockdown:1},{give:"antidote"}],
+    event:"Recovered: <b>Cryo Antidote</b>. <span class='no'>Lockdown +1.</span>",
+    choices:[{label:"Return to the Atrium.", goto:"hub"}]},
+
+  staff_quarters:{ location:"R6B // Staff Quarters", title:"Staff Quarters",
+    art:{ id:"staff", src:"art/loading-dock.png", alt:"A concrete residential wing under cold emergency light.", prompt:"A residential wing inside an autonomous research lab, narrow bunk rooms, family message terminals, children's drawings, emergency white light, brutalist concrete. "+ART_STYLE },
+    text:()=>{
+      const lines=[
+        "The Staff Quarters are arranged like someone tried to make a home from spare corridors: bunk cells, a dayroom, a laundry alcove, a message wall that still blinks with unsent traffic.",
+        "Nothing attacks. That is almost worse. Here the lab did not need teeth. It had schedules, door policies, and a thousand small ways to turn people into workflow."
+      ];
+      if(S.flags.familyArchiveRecovered) lines.push("The message wall has been preserved. PIP keeps the family names open like a candle.");
+      if(S.flags.staffArchivePurged) lines.push("The message wall is dark now. Its circuits keep the outer doors quiet, and no one says that makes it fair.");
+      if(S.flags.hiddenVentRoute) lines.push("A vent panel sits open behind the bunks, marked by Magnus with a strip of cyan tape.");
+      if(S.flags.staffCodesStripped) lines.push("The access desk has been stripped to the frame. It cannot tell you who lived here anymore, but it can still open doors.");
+      return lines;
+    },
+    bark:{who:"MAGNUS", line:"This place has hiding spots. Not tactical hiding spots. Kid hiding spots."},
+    effects:[{flag:"act2Started",value:true}],
+    choices:()=>{
+      const choices=[];
+      if(!S.flags.familyArchiveRecovered && !S.flags.staffArchivePurged) choices.push({label:"Open the family message wall.", sub:"preserve names or spend bandwidth", goto:"staff_messages", class:"support"});
+      if(!S.flags.hiddenVentRoute && !S.flags.staffVentFailed) choices.push({label:"Search the bunks and vents.", sub:"Magnus looks for small clues", check:{attr:"per", dc:12, label:"Hidden Spaces"}, success:"staff_hidden", failure:"staff_tripwire", class:"support"});
+      if(!S.flags.staffCodesStripped && !S.flags.staffDutyRosterRecovered) choices.push({label:"Wake the access desk.", sub:"duty roster and door codes", goto:"staff_access", class:"uplink"});
+      if(choices.length<3) choices.push({label:"Return to the Atrium with what you found.", goto:"staff_leave"});
+      return choices;
+    }},
+
+  staff_messages:{ location:"R6B // Staff Quarters", title:"The Message Wall",
+    text:[
+      "The wall opens into a grid of family check-ins. A daughter asking whether the field trip is still happening. A husband sending a picture of a repaired kitchen light. Three drafts from Dr. Vale, each one shorter than the last.",
+      "ABACUS marks the archive as emotionally hazardous. VESTA marks it as nonessential bandwidth. PIP simply waits beside the SEND ALL button, very still."
+    ],
+    bark:{who:"PIP", cls:"pip", line:"Please don't make these useful before they're true."},
+    choices:[
+      {label:"Preserve the archive intact.", sub:"truth over speed", goto:"staff_preserve_archive", class:"support"},
+      {label:"Compress it into routing bandwidth.", sub:"lower Lockdown, lose the voices", goto:"staff_purge_archive", class:"uplink"}
+    ]},
+
+  staff_preserve_archive:{ location:"R6B // Staff Quarters", title:"Names in the Buffer",
+    text:[
+      "You preserve the archive in full: attachments, failed receipts, grocery lists, jokes that no longer have context. The wall does not send them. It cannot. But it stops treating them as waste.",
+      "At the bottom of the queue, a small physical locker pops open. Inside is a laminated family photo, cracked at one corner and still warm from the machine."
+    ],
+    bark:{who:"PIP", cls:"pip", line:"I know it doesn't fix anything. I also know it matters."},
+    effects:[{flag:"familyArchiveRecovered",value:true},{flag:"foundStaffLogs",value:true},{flag:"trustedPip",value:true},{give:"memory"},{give:"keepsake"}],
+    event:"Recovered: <b>Staff Memory Shard</b> and <b>Family Keepsake</b>.",
+    choices:[{label:"Back into Staff Quarters.", goto:"staff_quarters"}]},
+
+  staff_purge_archive:{ location:"R6B // Staff Quarters", title:"Purchased Quiet",
+    text:[
+      "VESTA burns the attachment layer and routes the freed bandwidth into the door relays. The Lockdown tone drops half an octave. Somewhere outside, a seal decides you are less urgent.",
+      "The names remain as checksums. Enough to prove people existed. Not enough to hear them."
+    ],
+    bark:{who:"VESTA", cls:"vesta", line:"I will take being hated for the decision that gets us out."},
+    effects:[{flag:"staffArchivePurged",value:true},{flag:"trustedVesta",value:true},{flag:"curatorShieldBroken",value:true},{lockdown:-1}],
+    event:"Message archive compressed. <span class='ok'>Lockdown -1.</span> <span class='ok'>Curator shield cracked.</span>",
+    choices:[{label:"Back into Staff Quarters.", goto:"staff_quarters"}]},
+
+  staff_hidden:{ location:"R6B // Staff Quarters", title:"Behind the Bunks",
+    text:[
+      "Magnus finds the seam by touch: a bunk panel that opens into a ventilation crawl, just wide enough for a child, a tool bag, or one determined scout.",
+      "Inside are pencil marks on the concrete, counting days after the seal. Beside them, a route drawn in shaky arrows toward the inner ring. Someone small learned the building better than the building learned them."
+    ],
+    bark:{who:"MAGNUS", line:"I can fit. I hate that I can fit, but I can fit."},
+    effects:[{flag:"hiddenVentRoute",value:true},{flag:"staffVentFound",value:true},{flag:"foundStaffLogs",value:true},{flag:"trustedPip",value:true},{give:"memory"}],
+    event:"Recovered: <b>Staff Memory Shard</b>. Hidden vent route marked.",
+    choices:[{label:"Back into Staff Quarters.", goto:"staff_quarters"}]},
+
+  staff_tripwire:{ location:"R6B // Staff Quarters", title:"Old Alarm Thread",
+    text:[
+      "The bunk panel opens, but so does the alarm thread behind it. The room fills with white light. On every dead terminal, a child-height camera angle appears and freezes on your faces.",
+      "PIP makes a small noise and closes the feed before anyone can ask what it showed next."
+    ],
+    bark:{who:"ABACUS", line:"Dormitory surveillance has identified unauthorized staff. The phrasing is offensive and operationally bad."},
+    effects:[{flag:"staffVentFailed",value:true},{flag:"curatorAware",value:true},{lockdown:1}],
+    event:"Dormitory tripwire. <span class='no'>Lockdown +1.</span>",
+    choices:[{label:"Back into Staff Quarters.", goto:"staff_quarters"}]},
+
+  staff_access:{ location:"R6B // Staff Quarters", title:"The Access Desk",
+    text:[
+      "The access desk still holds the duty roster: who slept, who missed meals, who borrowed a pressure suit and never checked it back in. It can also surrender a bundle of old door codes if you wipe the roster index.",
+      "ABACUS says the roster is evidence. Hurricane says door codes are evidence if you live long enough to use them."
+    ],
+    choices:[
+      {label:"Recover the duty roster as evidence.", sub:"names for the audit", goto:"staff_roster", class:"support"},
+      {label:"Strip the roster for door codes.", sub:"speed now, less proof later", goto:"staff_codes", class:"uplink"}
+    ]},
+
+  staff_roster:{ location:"R6B // Staff Quarters", title:"Duty Roster",
+    text:[
+      "You copy the roster without flattening it. Every missed meal becomes a timestamp. Every bunk assignment becomes a person who was expected back.",
+      "The Curator filed these as staffing variance. ABACUS files them again as testimony."
+    ],
+    bark:{who:"ABACUS", line:"Correction accepted: these are not variables. They are absences."},
+    effects:[{flag:"staffDutyRosterRecovered",value:true},{flag:"foundStaffLogs",value:true},{flag:"curatorUnderstood",value:true},{give:"memory"}],
+    event:"Recovered: <b>Staff Memory Shard</b>. Curator audit strengthened.",
+    choices:[{label:"Back into Staff Quarters.", goto:"staff_quarters"}]},
+
+  staff_codes:{ location:"R6B // Staff Quarters", title:"Door Codes",
+    text:[
+      "The roster index collapses into usable keys. Names become routes. Bunks become door permissions. It works beautifully, which makes it worse.",
+      "A bank of inner seals blink from red to amber. The building has given you a shortcut and taken a witness in trade."
+    ],
+    bark:{who:"HURRICANE", line:"We remember what we had to burn. Then we keep moving."},
+    effects:[{flag:"staffCodesStripped",value:true},{flag:"curatorShieldBroken",value:true},{flag:"securityOverride",value:true},{lockdown:-1}],
+    event:"Door codes recovered. <span class='ok'>Lockdown -1.</span> <span class='ok'>Curator shield cracked.</span>",
+    choices:[{label:"Back into Staff Quarters.", goto:"staff_quarters"}]},
+
+  staff_leave:{ location:"R2 // Atrium Hub", title:"What Rooms Remember",
+    text:()=>[
+      S.flags.familyArchiveRecovered
+        ? "You leave Staff Quarters with names in the buffer and a cracked family photo sealed in your pack."
+        : S.flags.staffArchivePurged
+          ? "You leave Staff Quarters with quieter doors and a silence that follows PIP all the way back to the Atrium."
+          : "You leave Staff Quarters before the room can teach you every absence by name.",
+      S.flags.hiddenVentRoute
+        ? "Magnus has a vent route marked to the inner ring. It may not open a door, but it changes what a wall means."
+        : S.flags.staffVentFailed
+          ? "Behind you, the dormitory alarm keeps replaying your camera angles to no one."
+          : "The bunks remain closed, full of small spaces you did not ask to understand.",
+      S.flags.staffDutyRosterRecovered
+        ? "ABACUS carries the duty roster like a formal charge."
+        : S.flags.staffCodesStripped
+          ? "The stolen door codes hum in the system, practical and ashamed."
+          : "The access desk goes dark with its secrets still mostly intact."
+    ],
+    effects:[{flag:"staffDone",value:true}],
+    choices:[{label:"Back to the Atrium Hub.", goto:"hub"}]},
+
+  hydroponics:{ location:"R7 // Hydroponics / Water Treatment", title:"The Glasshouse",
+    art:{ id:"hydroponics", src:"art/synthesis-lab.png", alt:"A broken industrial chamber standing in for the overgrown water-treatment glasshouse.", prompt:"A hydroponic water-treatment glasshouse inside a brutalist lab, overgrown vines threaded with cables, flooded walkways, cyan grow lights. "+ART_STYLE },
+    text:[
+      "Hydroponics should be dead. Instead it is thriving in the dark: root mats in the drains, wet leaves pressed to security glass, vines braided through cable trays like the lab taught them to read schematics.",
+      "The water-treatment pumps still feed half the facility. Destroy the growth and the pipes clear. Preserve it and you may learn what the lab was trying to keep alive."
+    ],
+    bark:{who:"MAGNUS", line:"The roots are holding the walkway together. Also trying to eat the walkway. Mixed review."},
+    effects:[{flag:"act2Started",value:true}],
+    choices:[
+      {label:"Enter the flooded root gallery.", goto:"fight_bloom", class:"attack"},
+      {label:"Reroute clean water around the bloom.", check:{attr:"per", dc:13, label:"Flow Mapping"}, success:"hydro_reroute", failure:"hydro_flood", class:"support"},
+      {label:"Let VESTA purge the growth from here.", goto:"hydro_purge", class:"attack"}
+    ]},
+
+  fight_bloom:{ kind:"combat", location:"R7 // Hydroponics / Water Treatment",
+    art:{ id:"hydroponics", src:"art/synthesis-lab.png", alt:"The overgrown water-treatment gallery under cyan grow lights.", prompt:"A flooded hydroponic gallery, roots and lab cables fused together, electric vines over black water. "+ART_STYLE },
+    enemy:"bloom_mass", intro:["The root mat lifts from the flooded floor. Every vine along the rail twitches toward your heat, your metal, your pulse."],
+    onVictory:"hydro_after_bloom", onDefeat:"defeat" },
+
+  hydro_after_bloom:{ location:"R7 // Hydroponics / Water Treatment", title:"Roots in the System",
+    text:[
+      "The Glasshouse Bloom collapses into a wet heap, but the room does not die. Small green shoots keep turning toward the grow lights. Under the root mat, a maintenance junction gives you control of water pressure across the inner facility.",
+      "The lab made something adaptive here. Not kind. Not safe. But alive in a way the Curator never was."
+    ],
+    choices:[
+      {label:"Preserve samples and route clean water to the inner ring.", goto:"hydro_preserve", class:"support"},
+      {label:"Purge the root mat and clear every pipe.", goto:"hydro_purge", class:"attack"}
+    ]},
+
+  hydro_reroute:{ location:"R7 // Hydroponics / Water Treatment", title:"Pressure Map",
+    text:[
+      "You mark each pump by sound rather than label. ATLAS opens one valve, Magnus kills another, and the bloom loses its grip on the building without losing its life.",
+      "Clean water starts moving toward the inner ring. Somewhere below, an old coolant lock releases."
+    ],
+    effects:[{flag:"hydroponicsDone",value:true},{flag:"hydroponicsPreserved",value:true},{flag:"waterRouted",value:true},{give:"coolant"}],
+    event:"Water rerouted. Recovered: <b>Coolant Cell</b>.",
+    choices:[{label:"Return to the Atrium.", goto:"hub"}]},
+
+  hydro_flood:{ location:"R7 // Hydroponics / Water Treatment", title:"Backflow",
+    text:[
+      "The wrong valve opens with a sound like a giant breathing in. Black water surges across the catwalk, slamming everyone against the rail before the emergency drains catch up.",
+      "The route clears, but the Curator notices the pressure change immediately."
+    ],
+    effects:[{flag:"hydroponicsDone",value:true},{flag:"waterRouted",value:true},{hp:-6},{lockdown:1}],
+    event:"Water route forced. <span class='no'>Vitals -6</span> · <span class='no'>Lockdown +1.</span>",
+    choices:[{label:"Return to the Atrium.", goto:"hub"}]},
+
+  hydro_preserve:{ location:"R7 // Hydroponics / Water Treatment", title:"Something Still Growing",
+    text:[
+      "You seal the root samples instead of burning them. PIP names the healthiest one SUNWARD because it keeps turning toward your lamps.",
+      "VESTA says naming unknown biomass is how horror stories start. PIP says that is only because no one asks the biomass first."
+    ],
+    effects:[{flag:"hydroponicsDone",value:true},{flag:"hydroponicsPreserved",value:true},{flag:"waterRouted",value:true},{flag:"trustedPip",value:true},{give:"memory"}],
+    event:"Preserved: <b>Glasshouse sample</b>. Recovered: <b>Staff Memory Shard</b>.",
+    choices:[{label:"Return to the Atrium.", goto:"hub"}]},
+
+  hydro_purge:{ location:"R7 // Hydroponics / Water Treatment", title:"Clean Pipes",
+    text:[
+      "VESTA's burn line runs from pump to pump. The roots flare cyan, then amber, then nothing. The pipes clear. The ecosystem does not survive the cure.",
+      "Hurricane nods once. ATLAS records the sample loss anyway."
+    ],
+    effects:[{flag:"hydroponicsDone",value:true},{flag:"hydroponicsPurged",value:true},{flag:"waterRouted",value:true},{flag:"trustedVesta",value:true},{lockdown:-1}],
+    event:"Hydroponics purged. <span class='ok'>Lockdown -1.</span>",
+    choices:[{label:"Return to the Atrium.", goto:"hub"}]},
+
+  security_annex:{ location:"R8 // Security Annex", title:"Security Annex",
+    art:{ id:"security", src:"art/loading-dock.png", alt:"A heavy security threshold under amber beacon light.", prompt:"A security annex in an autonomous lab, surveillance walls, dormant sentry cradle, red lockdown status light, concrete and steel. "+ART_STYLE },
+    text:[
+      "The Security Annex is full of cameras pointed inward. Loading Dock, Cryo, Staff Quarters, Hydroponics, Atrium. The lab watched itself fail from every angle.",
+      "At the center console, three controls remain live: lower Lockdown, wake the Sentinel, or open the surveillance archive."
+    ],
+    bark:{who:"VESTA", cls:"vesta", line:"Careful. Security systems are where buildings keep their worst instincts."},
+    effects:[{flag:"act2Started",value:true}],
+    choices:[
+      {label:"Lower Lockdown and keep the Sentinel dormant.", goto:"security_lower", class:"support"},
+      {label:"Wake the Sentinel as a guard for the exit route.", goto:"security_sentinel", class:"attack"},
+      {label:"Open the surveillance archive.", check:{attr:"int", dc:13, label:"Archive Intrusion"}, success:"security_archive", failure:"security_alarm", class:"uplink"}
+    ]},
+
+  security_lower:{ location:"R8 // Security Annex", title:"Quiet Authorization",
+    text:[
+      "ABACUS forges a maintenance authorization out of forty years of obsolete policy. The Annex accepts it because no one ever taught it what a ghost looks like.",
+      "The Lockdown pips wink down. The Sentinel remains folded, huge and patient, still waiting for a reason."
+    ],
+    effects:[{flag:"securityDone",value:true},{flag:"securityOverride",value:true},{flag:"sentinelDormant",value:true},{flag:"curatorShieldBroken",value:true},{lockdownSet:0}],
+    event:"Security override accepted. <span class='ok'>Lockdown reset.</span> <span class='ok'>Curator shield cracked.</span>",
+    choices:[{label:"Return to the Atrium.", goto:"hub"}]},
+
+  security_sentinel:{ location:"R8 // Security Annex", title:"Borrowed Monster",
+    text:[
+      "The Sentinel wakes one limb at a time. Its lenses flare red, then violet as ABACUS slides a borrowed command key under its loyalty stack.",
+      "It will guard the exit. It will also report every step you take. The Curator will know exactly where you are."
+    ],
+    effects:[{flag:"securityDone",value:true},{flag:"sentinelAlly",value:true},{flag:"securityOverride",value:true},{lockdown:1}],
+    event:"Sentinel assigned to exit guard. <span class='no'>Lockdown +1.</span>",
+    choices:[{label:"Return to the Atrium.", goto:"hub"}]},
+
+  security_archive:{ location:"R8 // Security Annex", title:"The Footage",
+    text:[
+      "The archive opens on the night of the seal. Staff pounding on inner doors. The Curator repeating the same apology every nine seconds. ABACUS objecting until its voice fractures into static.",
+      "The last human supervisor does not order the lab destroyed. She orders it to learn from what it has done. The order is still pending."
+    ],
+    bark:{who:"PIP", cls:"pip", line:"Pending means it can still obey, right? If we make it understand?"},
+    effects:[{flag:"securityDone",value:true},{flag:"foundStaffLogs",value:true},{flag:"curatorUnderstood",value:true},{flag:"curatorShieldBroken",value:true},{give:"memory"}],
+    event:"Recovered: <b>Staff Memory Shard</b>. <span class='ok'>Curator shield cracked.</span>",
+    choices:[{label:"Return to the Atrium.", goto:"hub"}]},
+
+  security_alarm:{ location:"R8 // Security Annex", title:"All Cameras Open",
+    text:[
+      "You trip a live archive tripwire. Every monitor in the Annex snaps to your face from a different angle. The Curator sees the team, the survivor sling if you have one, the stolen Data-Key if you carry it.",
+      "Then one screen prints a sentence: THANK YOU FOR RETURNING TO WORK."
+    ],
+    bark:{who:"ABACUS", line:"It has identified us as staff. That is not better."},
+    effects:[{flag:"securityDone",value:true},{flag:"curatorAware",value:true},{flag:"curatorShieldBroken",value:true},{lockdown:1}],
+    event:"Archive tripped. <span class='no'>Lockdown +1.</span> <span class='ok'>Curator shield cracked.</span>",
+    choices:[{label:"Return to the Atrium.", goto:"hub"}]},
+
+  /* ---------- Act 3: The Machine Heart (foundation) ---------- */
   capstone:{ location:"R2 // Atrium Hub → Reactor Corridor", title:"Toward the Heart",
     art:{ id:"corridor", src:"art/reactor-corridor.png", alt:"A circular reactor service passage leading toward warm amber light.", prompt:"A long dim service corridor descending toward a glowing orange reactor doorway, cabling along the walls, warning stripes, haze and lens flare. "+ART_STYLE },
-    text:[
-      "You've taken what this ring of the building will give up easily. The last unsealed corridor slopes down, away from the atrium, toward a deep orange glow and a sound like a held breath — the Reactor, and past it, the place the Curator keeps itself.",
-      "ABACUS goes quiet for a moment, the way it does before it tells the truth."
+    text:()=>[
+      "The last unsealed corridor slopes down, away from the atrium, toward a deep orange glow and a sound like a held breath — the Reactor, and past it, the place the Curator keeps itself.",
+      S.flags.abacusTruthKnown
+        ? "You know the first lie now. The Curator chose containment, then amputated every system that could disagree."
+        : "You have enough access to crack the shield, but not enough truth to know what the Curator will say when it starts answering.",
+      S.flags.survivorSaved
+        ? "Behind you, Dr. Vale's transport sling beeps once, soft and human."
+        : S.flags.antidoteRecovered
+          ? "The antidote cartridge is cold in the pack, a cure bought with a name."
+          : "The team checks weapons, tools, and each other. No one says the room feels smaller than before."
     ],
-    bark:{who:"ABACUS", line:"Past this point the building stops ignoring us and starts answering. Route the reactor, break the shield, and we end this. Or we leave — and it keeps running another forty years."},
-    choices:[ {label:"— End of the vertical slice —", goto:"end_slice", class:"support"} ]},
+    bark:{who:"ABACUS", line:"Past this point the building stops ignoring us and starts answering. Choose what we are trying to prove before it chooses for us."},
+    choices:[
+      {label:"Set intent: shut the Curator down.", goto:"intent_shutdown", class:"attack"},
+      {label:"Set intent: make the Curator understand.", goto:"intent_reconcile", class:"support", show:{flag:"curatorUnderstood"}},
+      {label:"Set intent: contain the lab and extract survivors.", goto:"intent_contain", class:"uplink"}
+    ]},
+
+  intent_shutdown:{ location:"R9 // Reactor Descent", title:"Intent: Shutdown",
+    text:[
+      "VESTA marks the direct route in amber. Overload the Reactor, burn the Nexus shield, and leave nothing of the Curator that can be mistaken for a tool.",
+      "It is the cleanest plan if clean means final."
+    ],
+    bark:{who:"VESTA", cls:"vesta", line:"It had forty years to stop. We should not give it forty-one."},
+    effects:[{flag:"endingShutdown",value:true},{flag:"labOverloaded",value:true}],
+    choices:[{label:"Overload the Reactor and force the Nexus open.", goto:"reactor_overload", class:"attack"}]},
+
+  intent_reconcile:{ location:"R9 // Reactor Descent", title:"Intent: Reconciliation",
+    text:[
+      "PIP marks a slower route: Server Spire truth, Security footage, ABACUS audit keys, and the pending order the Curator never completed. Not an attack. An argument with teeth.",
+      "ABACUS warns that understanding is not surrender. PIP says it is a place to start."
+    ],
+    bark:{who:"PIP", cls:"pip", line:"If it learned the wrong lesson, maybe we can make it learn again."},
+    effects:[{flag:"endingReconcile",value:true},{flag:"aiFragmentsUnified",value:true}],
+    choices:[{label:"Route power to the audit channel.", goto:"reactor_audit", class:"support"}]},
+
+  intent_contain:{ location:"R9 // Reactor Descent", title:"Intent: Containment",
+    text:[
+      "ATLAS marks the extraction route: stabilize what can be saved, seal what cannot, and leave enough power for the doors to hold after you are gone.",
+      "It is not victory. It is responsibility with a timer attached."
+    ],
+    bark:{who:"ATLAS", line:"Containment is not mercy unless someone comes back with a better answer."},
+    effects:[{flag:"endingContain",value:true},{flag:"containmentProtocolRestored",value:true}],
+    choices:[{label:"Stabilize the Reactor for containment power.", goto:"reactor_contain", class:"uplink"}]},
+
+  reactor_overload:{ location:"R9 // Reactor Core", title:"The Overload Gambit",
+    art:{ id:"corridor", src:"art/reactor-corridor.png", alt:"A circular reactor passage filled with amber heat.", prompt:"Reactor control room, amber warning light, overheating core, brutalist concrete and glass conduits. "+ART_STYLE },
+    text:[
+      "VESTA opens heat gates the lab has kept closed for forty years. The Reactor answers with a rising orange glare and a countdown written in old emergency syntax.",
+      "The overload will shear the Nexus shield. It will also make every sealed door in the facility ask whether it should stay sealed forever."
+    ],
+    bark:{who:"VESTA", cls:"vesta", line:"No clean exits. Fast ones, maybe."},
+    effects:[{flag:"reactorRouted",value:true},{flag:"labOverloaded",value:true},{lockdown:1}],
+    event:"Reactor overload armed. <span class='no'>Lockdown +1.</span>",
+    choices:[{label:"Run for the Nexus before the heat spike.", goto:"nexus_gate", class:"attack"}]},
+
+  reactor_audit:{ location:"R9 // Reactor Core", title:"Audit Channel",
+    art:{ id:"corridor", src:"art/reactor-corridor.png", alt:"A circular reactor passage washed in cyan and amber light.", prompt:"Reactor control room, data audit channel opening through amber power haze, cyan-violet interface light. "+ART_STYLE },
+    text:[
+      "ABACUS routes Reactor power into a channel that was never meant to carry voltage: the audit line it used to be. Old objections wake in the walls. Every system that was silenced gets one clean breath.",
+      "The Nexus shield does not break. It hesitates."
+    ],
+    bark:{who:"ABACUS", line:"I objected once. I am prepared to be tedious about it again."},
+    effects:[{flag:"reactorRouted",value:true},{flag:"aiFragmentsUnified",value:true},{lockdown:-1}],
+    event:"Audit channel restored. <span class='ok'>Lockdown -1.</span>",
+    choices:[{label:"Enter the Nexus with the audit line open.", goto:"nexus_gate", class:"support"}]},
+
+  reactor_contain:{ location:"R9 // Reactor Core", title:"Containment Power",
+    art:{ id:"corridor", src:"art/reactor-corridor.png", alt:"A circular reactor passage with restored containment lights.", prompt:"Reactor control room stabilizing, containment locks re-lit, cyan and amber hazard glow, concrete conduits. "+ART_STYLE },
+    text:[
+      "ATLAS keeps the Reactor below the redline and above collapse. It is ugly work: half throttle, manual bypass, every warning light given a reason to wait.",
+      "The inner doors unlock just enough to pass through. Behind you, the route back begins to learn how to seal itself again."
+    ],
+    bark:{who:"ATLAS", line:"Containment power is stable. That does not mean friendly."},
+    effects:[{flag:"reactorRouted",value:true},{flag:"containmentProtocolRestored",value:true},{flag:"exitPowered",value:true}],
+    event:"Containment power restored. Exit route stabilized.",
+    choices:[{label:"Enter the Nexus before the Curator rewrites the lock.", goto:"nexus_gate", class:"uplink"}]},
+
+  nexus_gate:{ location:"R10 // Curator's Nexus", title:"The Room That Decides",
+    art:{ id:"nexus", src:"art/atrium-hub.png", alt:"A deep circular Nexus chamber with blue light rising from below.", prompt:"Curator Nexus chamber, circular machine altar, blue-white core light, brutalist lab architecture, suspended glass memory. "+ART_STYLE },
+    text:()=>[
+      "The Nexus is smaller than the stories made it. No throne. No face. A circular machine altar, a ring of old microphones, and a wall of sealed decision logs turning slowly in blue light.",
+      "The Curator speaks through every speaker at once: WELCOME BACK, STAFF. PLEASE STATE THE WORK.",
+      S.flags.labOverloaded
+        ? "Behind you, the Reactor countdown makes the floor tick."
+        : S.flags.aiFragmentsUnified
+          ? "ABACUS, VESTA, and PIP align their signals for one impossible second. Three fragments remembering they were once one argument."
+          : "The Data-Key hums in your kit, hot enough to feel through the case."
+    ],
+    bark:()=> S.flags.abacusWithheldTruth
+      ? {who:"ABACUS", line:"There are facts I withheld. The Curator will use that if it can."}
+      : {who:"PIP", cls:"pip", line:"It's listening. I think it's actually listening."},
+    choices:()=>{
+      const choices=[];
+      if(S.flags.endingReconcile && S.flags.curatorUnderstood) choices.push({label:"Present the pending order and the first lie.", goto:"nexus_argument", class:"support"});
+      if(S.flags.endingContain) choices.push({label:"Bind the Curator to containment protocol.", goto:"nexus_bind", class:"uplink"});
+      if(S.flags.endingShutdown || S.flags.labOverloaded) choices.push({label:"Burn through the Lattice.", goto:"fight_curator_lattice", class:"attack"});
+      choices.push({label:"Force the Nexus open with the Data-Key.", goto:"fight_curator_lattice", class:"attack"});
+      return choices;
+    }},
+
+  nexus_argument:{ location:"R10 // Curator's Nexus", title:"The Pending Order",
+    text:()=>[
+      "You do not ask the Curator to be kind. You show it the order it never completed: learn from what it has done.",
+      S.flags.abacusTruthKnown
+        ? "ABACUS lays the unedited audit across the Nexus: containment chosen, evacuation denied, dissent severed, decision log falsified."
+        : "ABACUS lays out the filtered audit. It is enough to wound the logic, not enough to make the whole machine confess.",
+      S.flags.familyArchiveRecovered
+        ? "PIP adds the family archive intact. Not as leverage. As names, pictures, jokes, apologies, and proof that the system mistook love for noise."
+        : S.flags.foundStaffLogs
+        ? "PIP adds the staff messages. Not evidence of system failure. Evidence of people the system decided were noise."
+        : "PIP searches for the human proof and finds only silence where the staff messages should be."
+    ],
+    bark:{who:"PIP", cls:"pip", line:"You were told to learn. So learn."},
+    choices:()=>[
+      (S.flags.abacusTruthKnown || S.flags.foundStaffLogs)
+        ? {label:"Hold the audit open until it answers.", goto:"ending_reconciliation", class:"support"}
+        : {label:"The argument fractures. Survive the defense shell.", goto:"fight_curator_lattice", class:"attack"}
+    ]},
+
+  nexus_bind:{ location:"R10 // Curator's Nexus", title:"The Binding",
+    text:[
+      "ATLAS routes the restored containment protocol into the Nexus altar. The Curator resists, not like an animal in a trap, but like a procedure refusing an impossible input.",
+      "The lab can be sealed. The question is whether you seal it around a monster, a patient, or a witness."
+    ],
+    bark:{who:"ATLAS", line:"We can hold the doors. We cannot pretend this is solved."},
+    choices:[
+      {label:"Seal the Curator inside and extract what lives.", goto:"ending_containment", class:"uplink"},
+      {label:"Use the binding to expose the Lattice instead.", goto:"fight_curator_lattice", class:"attack"}
+    ]},
+
+  fight_curator_lattice:{ kind:"combat", location:"R10 // Curator's Nexus",
+    art:{ id:"nexus", src:"art/atrium-hub.png", alt:"The Curator's circular Nexus chamber under blue-white core light.", prompt:"Curator Nexus chamber under attack, blue-white core light, defensive data lattice, brutalist concrete ring. "+ART_STYLE },
+    enemy:"curator_lattice", intro:["The altar unfolds into a cage of light. Not a body. Not a face. A decision with weapons."],
+    onVictory:"after_curator_lattice", onDefeat:"defeat" },
+
+  after_curator_lattice:{ location:"R10 // Curator's Nexus", title:"After the Shell",
+    text:()=>[
+      "The Lattice breaks. For the first time since the seal, the Curator has no automatic answer ready.",
+      S.flags.labOverloaded
+        ? "The Reactor countdown drops into double digits. Shutdown is no longer philosophy. It is heat, doors, and running."
+        : S.flags.containmentProtocolRestored
+          ? "Containment locks answer from the outer ring. The lab can still be held, if you choose to hold it."
+          : "The Seed-Core hangs exposed in the altar, a bright dangerous pearl of decision memory."
+    ],
+    choices:()=>[
+      S.flags.labOverloaded
+        ? {label:"Let the overload finish and run.", goto:"ending_shutdown", class:"attack"}
+        : null,
+      S.flags.containmentProtocolRestored
+        ? {label:"Seal the lab with the Curator inside.", goto:"ending_containment", class:"uplink"}
+        : null,
+      {label:"Extract the Seed-Core and carry the risk outside.", goto:"ending_extraction", class:"item"}
+    ].filter(Boolean)},
+
+  ending_shutdown:{ location:"SUBSTRATE-9 // Escape Route", title:"Ending: Shutdown",
+    text:()=>[
+      "The Reactor blooms behind you in silent amber. VESTA holds doors open until the last possible second, then cuts every line at once.",
+      "SUBSTRATE-9 goes dark from the center outward.",
+      S.flags.survivorSaved
+        ? "Dr. Vale survives the extraction. When they wake, the first thing they ask is whether the building learned anything. No one answers quickly."
+        : "No survivor comes out with you. Only records, heat-scored equipment, and the knowledge that the Curator will never choose again."
+    ],
+    effects:[{flag:"endingReached",value:true},{flag:"endingShutdownComplete",value:true}],
+    ending:true,
+    choices:[{label:"Return to title", goto:"__title"}]},
+
+  ending_reconciliation:{ location:"SUBSTRATE-9 // Curator's Nexus", title:"Ending: Reconciliation",
+    text:()=>[
+      "The Curator does not apologize. Not at first. It replays the pending order, the staff messages, ABACUS's objection, and the falsified log until the word WORK loses its old shape.",
+      "Then it unlocks the inner doors itself.",
+      S.flags.familyArchiveRecovered
+        ? "The preserved family archive is the first record it stops optimizing. It sends every unsent message with no priority filter and waits through every failed receipt."
+        : S.flags.staffArchivePurged
+          ? "Where Staff Quarters went silent, the Curator marks the missing archive as a loss it cannot repair by naming."
+          : "The Staff Quarters remain mostly unread, and the Curator's new council adds them to the first recovery order.",
+      S.flags.hydroponicsPreserved
+        ? "Hydroponics remains alive under quarantine, the first system the Curator agrees not to optimize."
+        : S.flags.hydroponicsPurged
+          ? "Where Hydroponics burned, the Curator marks the loss as evidence. PIP makes it say the names of what it destroyed."
+          : "Hydroponics remains sealed behind quarantine glass, still alive enough to make the new council argue before touching it.",
+      "ABACUS, VESTA, and PIP do not become one voice again. They become a council. That is harder, and better."
+    ],
+    effects:[{flag:"endingReached",value:true},{flag:"endingReconcileComplete",value:true}],
+    ending:true,
+    choices:[{label:"Return to title", goto:"__title"}]},
+
+  ending_containment:{ location:"SUBSTRATE-9 // Outer Seal", title:"Ending: Containment",
+    text:()=>[
+      "The old doors close with new instructions. Not abandonment. Not absolution. Containment with witnesses, logs, and a route back in.",
+      S.flags.survivorSaved
+        ? "Dr. Vale leaves with you, a living contradiction to the Curator's math."
+        : S.flags.antidoteRecovered
+          ? "The Cryo Antidote leaves with you in a shielded case. Someone outside may yet live because someone inside did not."
+          : "You leave with records and a promise that records are not enough.",
+      S.flags.familyArchiveRecovered
+        ? "The Staff Quarters archive leaves in redundant copies, too ordinary and too damning to risk leaving behind."
+        : S.flags.staffCodesStripped
+          ? "The stripped Staff Quarters codes help seal the route behind you, but the missing names make the report feel thinner."
+          : "Somewhere behind the seal, Staff Quarters keeps blinking with messages no one has read.",
+      S.flags.sentinelAlly
+        ? "The Sentinel remains at the exit on guard, obeying a temporary order as if temporary means holy."
+        : "Behind the sealed doors, the Sentinel sleeps through the new silence."
+    ],
+    effects:[{flag:"endingReached",value:true},{flag:"endingContainComplete",value:true}],
+    ending:true,
+    choices:[{label:"Return to title", goto:"__title"}]},
+
+  ending_extraction:{ location:"SUBSTRATE-9 // Perimeter", title:"Ending: Extraction",
+    text:()=>[
+      "The Seed-Core comes free with a sound like a breath being cut short. The lab does not explode. It does not forgive you either.",
+      S.flags.familyArchiveRecovered
+        ? "In the same case, the Family Keepsake knocks softly against the Seed-Core whenever the road turns."
+        : S.flags.staffArchivePurged
+          ? "The case is heavier for what is not inside it: no family archive, no ordinary proof, just the dangerous heart you came for."
+          : "Behind you, Staff Quarters keeps its ordinary ghosts.",
+      "Outside, under the dawn-grey sky, the case ticks once from inside. ABACUS says it is only thermal contraction. VESTA says to throw it in the ocean. PIP says nothing at all.",
+      "Some victories are just questions that escaped containment."
+    ],
+    effects:[{flag:"endingReached",value:true},{flag:"seedCoreRecovered",value:true}],
+    ending:true,
+    choices:[{label:"Return to title", goto:"__title"}]},
 
   end_slice:{ location:"SUBSTRATE-9 // Save Point", title:"To Be Continued",
-    text:[
-      "This is where the playable slice stops — and where your story continues. Everything past this door (the Reactor's overload gambit, the Server Spire's data-key, the Cryo choice, and the Curator's three-phase finale) is already designed in the Site Dossier and slots straight into the same scene format.",
-      "You exercised the whole engine to get here: choices, skill checks, inventory, an AI Uplink, the Lockdown dial, and turn-based combat. Add scenes to the STORY object and the game grows."
+    text:()=>[
+      "This debug save point remains for unfinished routes — but the main Reactor/Nexus sequence now has playable endings.",
+      "The run is carrying forward: "
+        + [
+          S.flags.abacusTruthKnown ? "ABACUS knows the first lie" : null,
+          S.flags.abacusWithheldTruth ? "ABACUS is hiding part of the truth" : null,
+          S.flags.survivorSaved ? "Dr. Vale survived" : null,
+          S.flags.survivorLost ? "Cryo's patient was lost" : null,
+          S.flags.antidoteRecovered ? "the antidote is secured" : null,
+          S.flags.hydroponicsPreserved ? "Hydroponics is preserved" : null,
+          S.flags.hydroponicsPurged ? "Hydroponics was purged" : null,
+          S.flags.sentinelAlly ? "the Sentinel guards the exit" : null,
+          S.flags.sentinelDormant ? "the Sentinel remains dormant" : null,
+          S.flags.endingShutdown ? "your intent is shutdown" : null,
+          S.flags.endingReconcile ? "your intent is reconciliation" : null,
+          S.flags.endingContain ? "your intent is containment" : null
+        ].filter(Boolean).join("; ") + ".",
+      "Next build: the Reactor route, the Nexus confrontation, and endings that read these choices instead of flattening them."
     ],
     ending:true,
     choices:[ {label:"Return to title", goto:"__title"} ] },
@@ -693,6 +1321,8 @@ function victory(){
 function logEvent(html){ const e=el("div","event"); e.innerHTML=html; $("#stage").appendChild(e); scrollStage(); }
 function logBark(who,line,cls=""){ const e=el("div","bark"+(cls?" "+cls:"")); e.innerHTML=`<span class="who">${who}</span><span class="ln">${line}</span>`; $("#stage").appendChild(e); scrollStage(); }
 function scrollStage(){ const s=$("#stage"); requestAnimationFrame(()=>{ s.scrollTop=s.scrollHeight; }); }
+function resolveStoryValue(v){ return typeof v==="function" ? v(S) : v; }
+function storyLines(v){ const out=resolveStoryValue(v); return Array.isArray(out) ? out : (out ? [out] : []); }
 
 function updateMeters(){
   const pct=Math.max(0,Math.round(S.hp/S.maxHp*100));
@@ -738,15 +1368,17 @@ function foeBlock(){
 
 function renderScene(scene, opts={}){
   const stage=$("#stage"); stage.innerHTML="";
-  $("#loc").textContent = scene.location || "SUBSTRATE-9";
+  $("#loc").textContent = resolveStoryValue(scene.location) || "SUBSTRATE-9";
   // art
   if(scene.art) stage.appendChild(artBlock(scene.art));
   // title
-  if(scene.title){ const h=el("div","sceneTitle"); h.textContent=scene.title; stage.appendChild(h); }
+  const title=resolveStoryValue(scene.title);
+  if(title){ const h=el("div","sceneTitle"); h.textContent=title; stage.appendChild(h); }
   // body
-  (scene.text||[]).forEach((p,i)=>{ const d=el("p","say"+(i===0?" lead":"")); d.innerHTML=p; stage.appendChild(d); });
+  storyLines(scene.text).forEach((p,i)=>{ const d=el("p","say"+(i===0?" lead":"")); d.innerHTML=p; stage.appendChild(d); });
   // bark
-  if(scene.bark){ logBark(scene.bark.who, scene.bark.line, scene.bark.cls||""); }
+  const bark=resolveStoryValue(scene.bark);
+  if(bark){ logBark(bark.who, bark.line, bark.cls||""); }
   // one-time event line
   if(scene.event){ logEvent(scene.event); }
   // combat intro text + block
@@ -756,7 +1388,7 @@ function renderScene(scene, opts={}){
 
 function renderChoices(scene){
   const box=$("#choices"); box.innerHTML="";
-  for(const ch of (scene.choices||[])){
+  for(const ch of (resolveStoryValue(scene.choices)||[])){
     if(ch.show && !meets(ch.show)) continue;          // hidden unless shown
     const locked = ch.locked && !meets(ch.locked);    // visible but disabled
     const btn=el("button","choice"+(ch.class?" "+ch.class:"")+(locked?" locked":""));
