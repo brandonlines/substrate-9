@@ -257,8 +257,14 @@ button{font-family:inherit}
 const ART_STYLE = "dark clinical sci-fi, abandoned-but-awake autonomous lab, volumetric haze, cyan/amber/violet hazard light, brutalist concrete + steel + glass, cinematic, slightly desaturated, no text";
 
 const PARTY_ACTIONS = {
+  acid:   { who:"ATLAS", label:"Caustic Primer", kind:"attack", toHit:5, dmg:"1d8+3", dtype:"acid",
+            note:"1d8+3 acid · corrodes AC" },
+  arc:    { who:"MAGNUS", label:"Arc Jack", kind:"attack", toHit:6, dmg:"1d10+2", dtype:"electric",
+            note:"1d10+2 electric · +1d6 vs soaked targets" },
   lash:   { who:"HURRICANE", label:"Firebrand Lash", kind:"attack", toHit:6, dmg:"2d6+3", dtype:"fire",
-            note:"2d6+3 fire" },
+            note:"2d6+3 fire · ignites oozes" },
+  water:  { who:"ATLAS", label:"Pressure Burst", kind:"attack", toHit:5, dmg:"1d8+2", dtype:"water",
+            note:"1d8+2 water · soaks target" },
   sneak:  { who:"MAGNUS", label:"Sneak Strike", kind:"attack", toHit:6, dmg:"1d6+3", dtype:"pierce", sneak:"2d6",
             note:"1d6+3, +2d6 if unseen — but 'slashing' an ooze risks a Split" },
   patch:  { who:"ATLAS", label:"Field Patch", kind:"heal", heal:"2d8+3", uses:3,
@@ -550,6 +556,7 @@ function startCombat(scene){
   const base = ENEMIES[scene.enemy];
   combat = { def:JSON.parse(JSON.stringify(base)), key:scene.enemy,
              foeHp:base.hp, foeMax:base.hp, frozen:0, revealed:false,
+             corroded:0, soaked:0,
              firebuff:false, advantage:false, patchUses:PARTY_ACTIONS.patch.uses,
              onVictory:scene.onVictory, onDefeat:scene.onDefeat };
   renderScene(scene, {combatIntro:true});
@@ -558,8 +565,9 @@ function startCombat(scene){
 function combatActions(){
   const acts=[];
   // party attacks
-  acts.push({...PARTY_ACTIONS.lash, _id:"lash", cls:"attack"});
-  acts.push({...PARTY_ACTIONS.sneak, _id:"sneak", cls:"attack"});
+  for(const id of ["acid","arc","lash","water","sneak"]){
+    acts.push({...PARTY_ACTIONS[id], _id:id, cls:"attack"});
+  }
   if(combat.patchUses>0) acts.push({...PARTY_ACTIONS.patch, _id:"patch", cls:"support",
       note:`heal 2d8+3 · ${combat.patchUses} left`});
   // usable items
@@ -628,6 +636,22 @@ function resolveAttack(act, advantage){
     if(combat.firebuff && (act.dtype==="fire" || act.item)){ const fb=roll("2d6"); dmg+=fb; combat.firebuff=false; txt+=` · <span class="roll">overclock +${fb} fire</span>`; }
     // ooze fire bonus
     if(combat.def.split && act.dtype==="fire"){ dmg+=3; txt+=` · ignites +3`; }
+    // elemental attack riders
+    if(act.dtype==="acid" && combat.corroded<3){
+      combat.corroded++;
+      foe.ac=Math.max(5, foe.ac-1);
+      txt+=` · <span class="roll">corrode AC ${foe.ac}</span>`;
+    }
+    if(act.dtype==="water"){
+      combat.soaked=2;
+      txt+=` · <span class="roll">soaked</span>`;
+    }
+    if(act.dtype==="electric" && combat.soaked>0){
+      const shock=roll("1d6");
+      dmg+=shock;
+      combat.soaked=0;
+      txt+=` · <span class="roll">conducts +${shock}</span>`;
+    }
     combat.foeHp=Math.max(0, combat.foeHp-dmg);
     txt+= ` → <span class="no">${dmg} dmg</span>`;
     logEvent(txt);
@@ -651,6 +675,7 @@ function enemyTurn(){
   let txt=`<b>${foe.name} ${a.label}</b> — d20(${d})+${a.toHit} = <b>${total}</b> vs Def ${PARTY_DEF} `+(hit?`<span class="no">✓ hit</span>`:`<span class="ok">✗ miss</span>`);
   if(hit){ let dmg=roll(a.dmg); if(combat.bracing){ dmg=Math.ceil(dmg/2); txt+=` · braced`; } S.hp=Math.max(0,S.hp-dmg); txt+=` → <span class="no">−${dmg} Vitals</span>`; }
   combat.bracing=false;
+  if(combat.soaked>0) combat.soaked--;
   logEvent(txt);
   updateMeters();
   if(S.hp<=0){ const onD=combat.onDefeat; combat=null; return setTimeout(()=>goto(onD||"defeat"),600); }
@@ -680,6 +705,8 @@ function updateMeters(){
 function updateFoe(){ const f=$("#foeBlock"); if(!f||!combat) return; const pct=Math.max(0,Math.round(combat.foeHp/combat.foeMax*100));
   f.querySelector(".hpfill").style.width=pct+"%";
   const fz=f.querySelector("[data-frozen]"); if(fz) fz.classList.toggle("hidden", combat.frozen<=0);
+  const cd=f.querySelector("[data-corroded]"); if(cd){ cd.classList.toggle("hidden", combat.corroded<=0); cd.textContent=`CORRODED ${combat.corroded}`; }
+  const sk=f.querySelector("[data-soaked]"); if(sk) sk.classList.toggle("hidden", combat.soaked<=0);
 }
 
 function artBlock(art){
@@ -699,6 +726,8 @@ function foeBlock(){
   const f=combat.def; const b=el("div","foe"); b.id="foeBlock";
   const tagsHtml = (f.tags||[]).map(t=>`<span class="tg">${t}</span>`).join("")
      + `<span class="tg frozen hidden" data-frozen>FROZEN</span>`
+     + `<span class="tg danger hidden" data-corroded>CORRODED</span>`
+     + `<span class="tg frozen hidden" data-soaked>SOAKED</span>`
      + (combat.revealed && f.weakness? `<span class="tg danger">${f.weakness}</span>`:"");
   b.innerHTML=`<div class="row"><span class="nm">${f.name}</span><span class="cr">CR ${f.cr}</span></div>
     <div class="ty">${f.type}</div>

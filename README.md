@@ -127,10 +127,22 @@ mutagen_ooze: { name:"Mutagen Ooze", type:"Improvised reagent · ooze", cr:"2",
 
 `split:true` turns on the teaching mechanic: hitting it with a `pierce`/slash action while it's healthy and un-frozen makes it reknit (+HP). Fire and the Coolant Cell avoid that — which is exactly what VESTA warns you about.
 
+Elemental protagonist attacks have small universal riders:
+
+| Type | Rider |
+|---|---|
+| `acid` | Corrodes the foe, lowering AC by 1 per hit, up to 3 times. |
+| `electric` | Deals +1d6 if the target is currently soaked. |
+| `fire` | Ignites oozes for bonus damage and works with VESTA's Overclock. |
+| `water` | Soaks the target, setting up an electric follow-up. |
+
 ### Party actions (always available in combat)
 
 ```js
-lash:  { who:"HURRICANE", label:"Firebrand Lash", kind:"attack", toHit:6, dmg:"2d6+3", dtype:"fire", note:"2d6+3 fire" },
+acid:  { who:"ATLAS", label:"Caustic Primer", kind:"attack", toHit:5, dmg:"1d8+3", dtype:"acid", note:"..." },
+arc:   { who:"MAGNUS", label:"Arc Jack", kind:"attack", toHit:6, dmg:"1d10+2", dtype:"electric", note:"..." },
+lash:  { who:"HURRICANE", label:"Firebrand Lash", kind:"attack", toHit:6, dmg:"2d6+3", dtype:"fire", note:"..." },
+water: { who:"ATLAS", label:"Pressure Burst", kind:"attack", toHit:5, dmg:"1d8+2", dtype:"water", note:"..." },
 sneak: { who:"MAGNUS", label:"Sneak Strike", kind:"attack", toHit:6, dmg:"1d6+3", dtype:"pierce", sneak:"2d6", note:"..." },
 patch: { who:"ATLAS", label:"Field Patch", kind:"heal", heal:"2d8+3", uses:3, note:"..." },
 ```
