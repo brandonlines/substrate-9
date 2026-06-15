@@ -1,0 +1,19 @@
+{
+  "name": "SUBSTRATE-9: The Lines Expedition",
+  "short_name": "SUBSTRATE-9",
+  "description": "A turn-based sci-fi text expedition through an abandoned-but-awake autonomous research lab.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#0A0F13",
+  "theme_color": "#0A0F13",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
