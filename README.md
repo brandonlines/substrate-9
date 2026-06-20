@@ -8,9 +8,39 @@ This repo contains a complete engine plus a playable story slice. You grow the g
 
 - **Act 1: The Outer Ring** — intro, Loading Dock, Atrium Hub, Reagent Storage, and Synthesis Lab.
 - **Act 2: The Human Layer** — Server Spire, Cryo-Containment, Staff Quarters, Hydroponics / Water Treatment, and Security Annex.
-- **Act 3: The Machine Heart** — Reactor routing, Curator's Nexus, a defense-shell fight, and endings for shutdown, reconciliation, containment, or extraction.
+- **Act 3: The Machine Heart** — a final companion council, five strategic approaches to the Reactor/Nexus, a defense-shell fight, strategic pivots, and seven endings.
 
-The Atrium now reacts to major flags, including survivor status, preserved or purged systems, Staff Quarters evidence, hidden routes, and Sentinel choices, so the game carries consequences forward instead of treating each room as isolated.
+The Atrium and finale react to major flags, including survivor status, preserved or purged systems, Staff Quarters evidence, hidden routes, AI trust, Security control, and Sentinel choices. Endings are derived from the whole expedition instead of one final morality button.
+
+Act 2 room order now matters. Earlier outcomes create new solutions elsewhere instead of only adding ending flags:
+
+- Water Treatment plus a Security override can save both Dr. Vale and the Cryo Antidote.
+- Vale or the antidote can preserve Hydroponics without combat, with different costs.
+- Staff records and Security footage can prove the denied evacuation and recover an outer-seal route.
+- Family archives or Security evidence can anchor the Server reconstruction.
+- Hidden vents, Vale's biometrics, and family identities each produce a different Security outcome.
+
+The Atrium also hosts persistent companion confrontations. The player can press ABACUS about edited truth, challenge VESTA's doctrine of necessary destruction, establish PIP's rescue boundary, and call a council that sets the team's rule for the Machine Heart. Those decisions alter readiness tracks and ending text.
+
+### How endings are earned
+
+The game derives four hidden readiness tracks from the player's choices and describes them in words during the final council:
+
+- **Evidence** — unedited Server records, staff messages, family archives, duty rosters, and the Curator's pending order.
+- **Evacuation** — survivors, antidote, living Glasshouse samples, preserved archives, allies, and humane choices.
+- **Facility control** — Security overrides, water routing, hidden routes, maps, low Lockdown, door codes, and exit power.
+- **AI trust** — truthfulness and trust built with ABACUS, VESTA, and PIP; concealment or destroyed archives can weaken it.
+
+Those tracks unlock different ways to beat the game:
+
+- **Shutdown** is always possible through the Curator Lattice. Strong facility control unlocks a clean, non-explosive shutdown; poor preparation can force a sacrifice during escape.
+- **Reconciliation** requires a credible human record. High AI trust unlocks a genuine council; otherwise the Curator can be bound to permanent public audit.
+- **Containment** stabilizes and seals the lab. Strong evacuation preparation plus facility control unlocks the **Exodus** ending, which extracts everything recoverable first.
+- **Witness** requires complete evidence and control of a communications network. The player can publish everything or protect private identities before release.
+- **The Bargain** becomes available when the Curator has noticed the expedition or the Seed-Core trace is recovered. Strong leverage produces a bounded charter; weak leverage accepts far more dangerous terms.
+- **Extraction** remains available after breaking the defense shell, or through a difficult false-authorization trick during negotiation.
+
+The final choice can still pivot. A failed argument, rejected bargain, or abandoned plan can become combat, containment, shutdown, broadcast, or Seed-Core extraction depending on what the player prepared earlier.
 
 ---
 
@@ -40,6 +70,7 @@ To grow the story you only ever add objects to **Section 1**. When the file gets
 - **Local server:** `python3 -m http.server 4173`, then open `http://localhost:4173`.
 - **Hosted (recommended for sharing / installing):** drop the file on any static host (Netlify, Vercel, GitHub Pages, Cloudflare Pages). HTTPS is required for "Add to Home Screen" and offline.
 - No build step, no dependencies. Fonts load from Google Fonts with system fallbacks.
+- **Story smoke test:** `node --test tests/story-smoke.test.js` validates scene destinations, dynamic scenes, cross-room unlocks, companion councils, readiness gates, and all seven endings.
 
 ---
 
@@ -94,6 +125,15 @@ choices: () => [
   locked:{ flag:"hasDataKey" },    // choice appears but is greyed out unless met
   lockWhy:"Needs a vault clearance you don't have yet."
 }
+```
+
+`show` and `locked` may also be predicate functions for consequences that depend on several choices:
+
+```js
+{ label:"Broadcast the full record.",
+  goto:"nexus_broadcast",
+  locked: state => routeReady("witness", state),
+  lockWhy:"Needs complete evidence and control of a facility network." }
 ```
 
 Two special destinations: `goto:"__title"` (quit to title) and `goto:"__restart"` (wipe and restart).
@@ -286,12 +326,13 @@ Bundle the HTML as an asset and render it in `react-native-webview` inside an Ex
 
 ## Roadmap — deepening the expedition
 
-The slice now exercises every major story system: reactive hub narration, discovery flags, moral tradeoffs, elemental combat, Lockdown consequences, Reactor/Nexus choices, and multiple ending paths. The next build should deepen and polish:
+The slice now exercises every major story system: reactive hub narration, discovery flags, moral tradeoffs, elemental combat, Lockdown consequences, derived readiness tracks, Reactor/Nexus strategy changes, and seven ending paths. The next build should deepen and polish:
 
-- **Act 3 polish** — add a true multi-phase Curator finale, not just the current Lattice defense shell.
+- **Finale encounter polish** — make the Curator Lattice change tactics and dialogue based on the strategy that failed before combat.
 - **Staff Quarters polish** — add dedicated residential-wing art and more callbacks for family archive, hidden vent, and stripped-code outcomes.
+- **Return-state polish** — let completed rooms physically change when revisited after Cryo, Security, or Reactor decisions.
 - **Art pass** — generate dedicated Server, Cryo, Staff Quarters, Hydroponics, Security, Nexus, and ending key art.
-- **Ending reactivity** — expand ending text for more combinations: survivor + reconciliation, Sentinel + shutdown, Hydroponics + extraction, and ABACUS-withheld-truth fallout.
+- **Ending presentation** — add an ending gallery and named run-history summaries without exposing raw readiness numbers.
 
 Easy engine extensions when you want them: per-character Vitals (swap the single pool for three), an inventory screen, persistent difficulty scaling off the Lockdown dial, and ambient SFX.
 
